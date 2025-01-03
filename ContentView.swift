@@ -278,6 +278,7 @@ struct MaterialsView: View {
     @State private var selectedColors: [Color] = [.blue, .purple, .red, .orange]
     @State private var showingColorPicker = false
     @State private var selectedOrientation = GradientOrientation.diagonal
+    @State private var showingOrientationMenu = false
     
     enum GradientOrientation: String, CaseIterable {
         case diagonal = "Diagonal"
@@ -349,40 +350,56 @@ struct MaterialsView: View {
                             .clipShape(Circle())
                     }
                     
-                    Menu {
-                        ForEach(GradientOrientation.allCases, id: \.self) { orientation in
-                            Button(action: {
-                                selectedOrientation = orientation
-                                if isAnimating {
-                                    animate()
-                                }
-                            }) {
-                                Label(orientation.rawValue, systemImage: orientation.icon)
-                            }
-                        }
-                    } label: {
+                    Button(action: { showingOrientationMenu.toggle() }) {
                         Image(systemName: selectedOrientation.icon)
                             .font(.system(size: 24))
                             .foregroundColor(.white)
                             .padding()
                             .background(.ultraThinMaterial)
                             .clipShape(Circle())
-                            .frame(width: 50, height: 50) // Confining to a square layout
+                    }
+                    .popover(isPresented: $showingOrientationMenu) {
+                        VStack(spacing: 8) {
+                            ForEach(GradientOrientation.allCases, id: \.self) { orientation in
+                                Button(action: {
+                                    selectedOrientation = orientation
+                                    showingOrientationMenu = false
+                                    if isAnimating {
+                                        animate()
+                                    }
+                                }) {
+                                    HStack {
+                                        Image(systemName: orientation.icon)
+                                        Text(orientation.rawValue)
+                                    }
+                                    .foregroundColor(.primary)
+                                    .frame(minWidth: 150)
+                                    .padding(.vertical, 8)
+                                    .padding(.horizontal, 12)
+                                    .background(selectedOrientation == orientation ? Color.accentColor.opacity(0.2) : Color.clear)
+                                    .cornerRadius(8)
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(.ultraThinMaterial)
                     }
                 }
                 .padding()
                 
                 if showingColorPicker {
-                    VStack {
-                        ForEach(0..<4) { index in
-                            ColorPicker("Color \(index + 1)", selection: $selectedColors[index])
-                                .padding(.horizontal)
+                    GeometryReader { geometry in
+                        VStack {
+                            ForEach(0..<4) { index in
+                                ColorPicker("Color \(index + 1)", selection: $selectedColors[index])
+                                    .padding(.horizontal)
+                            }
                         }
+                        .padding()
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(12)
+                        .position(x: geometry.size.width / 2, y: 60)
                     }
-                    .padding()
-                    .background(.ultraThinMaterial)
-                    .cornerRadius(12)
-                    .position(x: 100, y: 100) // Fixed position near the eyedropper button
                 }
                 
                 Spacer()
