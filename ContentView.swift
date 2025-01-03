@@ -10,8 +10,21 @@ struct MaterialInfo: Identifiable {
     let id = UUID()
     let material: Material
     let name: String
-    // Add position for drag gesture
-    var position: CGPoint = .zero
+    var position: CGPoint
+}
+
+struct ToastView: View {
+    let message: String
+    let color: Color?
+    
+    var body: some View {
+        Text(message)
+            .font(.caption)
+            .padding(8)
+            .background(Color.black.opacity(0.8))
+            .foregroundColor(message.contains("Copied") ? (color ?? .white) : .white)
+            .cornerRadius(8)
+    }
 }
 
 struct ContentView: View {
@@ -42,11 +55,11 @@ struct ContentView: View {
     
     // Define all available materials with initial positions
     @State private var materialItems: [MaterialInfo] = [
-        MaterialInfo(material: .ultraThinMaterial, name: "Ultra Thin Material"),
-        MaterialInfo(material: .thinMaterial, name: "Thin Material"),
-        MaterialInfo(material: .regularMaterial, name: "Regular Material"),
-        MaterialInfo(material: .thickMaterial, name: "Thick Material"),
-        MaterialInfo(material: .ultraThickMaterial, name: "Ultra Thick Material")
+        MaterialInfo(material: .ultraThinMaterial, name: "Ultra Thin Material", position: CGPoint(x: 100, y: 100)),
+        MaterialInfo(material: .thinMaterial, name: "Thin Material", position: CGPoint(x: 150, y: 200)),
+        MaterialInfo(material: .regularMaterial, name: "Regular Material", position: CGPoint(x: 200, y: 300)),
+        MaterialInfo(material: .thickMaterial, name: "Thick Material", position: CGPoint(x: 250, y: 400)),
+        MaterialInfo(material: .ultraThickMaterial, name: "Ultra Thick Material", position: CGPoint(x: 300, y: 500))
     ]
     
     var body: some View {
@@ -155,19 +168,6 @@ struct NoSelectionView: View {
     }
 }
 
-struct ToastView: View {
-    let message: String
-    
-    var body: some View {
-        Text(message)
-            .font(.caption)
-            .padding(8)
-            .background(.ultraThinMaterial)
-            .foregroundColor(.primary)
-            .cornerRadius(8)
-    }
-}
-
 struct ColorDetails: View {
     let colorInfo: ColorInfo
     @State private var toastMessage: String?
@@ -242,13 +242,15 @@ struct ColorDetails: View {
         }
         .overlay {
             if let message = toastMessage, let location = toastLocation {
-                ToastView(message: message)
+                ToastView(message: message, color: colorInfo.color)
                     .position(x: location.x, y: location.y - 30)
                     .transition(.opacity)
             }
         }
     }
-    
+}
+
+extension ColorDetails {
     private func copyToClipboard(_ text: String, at location: CGPoint) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
@@ -267,39 +269,80 @@ struct ColorDetails: View {
     }
 }
 
-// Materials View
 struct MaterialsView: View {
     @Binding var materialItems: [MaterialInfo]
     @State private var gradientStart = UnitPoint(x: 0, y: 0)
     @State private var gradientEnd = UnitPoint(x: 1, y: 1)
+    @State private var isAnimating = true
+    @State private var animationTask: Task<Void, Never>?
     
     var body: some View {
         ZStack {
-            // Animated gradient background
             LinearGradient(
                 colors: [.blue, .purple, .red, .orange],
                 startPoint: gradientStart,
                 endPoint: gradientEnd
             )
             .ignoresSafeArea()
-            .onAppear {
-                withAnimation(.linear(duration: 5.0).repeatForever(autoreverses: true)) {
-                    gradientStart = UnitPoint(x: 1, y: 1)
-                    gradientEnd = UnitPoint(x: 0, y: 0)
+            .onChange(of: isAnimating) { oldValue, newValue in
+                if newValue {
+                    animate()
+                } else {
+                    animationTask?.cancel()
                 }
             }
             
-            // Draggable material cards
+            VStack {
+                Button(action: { isAnimating.toggle() }) {
+                    Image(systemName: isAnimating ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(.white)
+                        .padding()
+                        .background(.ultraThinMaterial)
+                        .clipShape(Circle())
+                }
+                .padding()
+                
+                Spacer()
+            }
+            
             ForEach($materialItems) { $item in
                 MaterialItemView(materialInfo: item)
-                    .position(x: item.position.x == 0 ? 200 : item.position.x,
-                             y: item.position.y == 0 ? 200 : item.position.y)
+                    .position(item.position)
                     .gesture(
                         DragGesture()
                             .onChanged { value in
                                 $item.position.wrappedValue = value.location
                             }
                     )
+            }
+        }
+        .onAppear {
+            if isAnimating {
+                animate()
+            }
+        }
+        .onDisappear {
+            animationTask?.cancel()
+        }
+    }
+    
+    private func animate() {
+        animationTask = Task {
+            while !Task.isCancelled {
+                withAnimation(.linear(duration: 5.0)) {
+                    gradientStart = UnitPoint(x: 1, y: 1)
+                    gradientEnd = UnitPoint(x: 0, y: 0)
+                }
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                
+                if Task.isCancelled { break }
+                
+                withAnimation(.linear(duration: 5.0)) {
+                    gradientStart = UnitPoint(x: 0, y: 0)
+                    gradientEnd = UnitPoint(x: 1, y: 1)
+                }
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
             }
         }
     }
