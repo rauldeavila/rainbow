@@ -367,6 +367,7 @@ struct MaterialsView: View {
                             .padding()
                             .background(.ultraThinMaterial)
                             .clipShape(Circle())
+                            .frame(width: 50, height: 50) // Confining to a square layout
                     }
                 }
                 .padding()
@@ -381,6 +382,7 @@ struct MaterialsView: View {
                     .padding()
                     .background(.ultraThinMaterial)
                     .cornerRadius(12)
+                    .position(x: 100, y: 100) // Fixed position near the eyedropper button
                 }
                 
                 Spacer()
