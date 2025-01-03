@@ -275,16 +275,18 @@ struct MaterialsView: View {
     @State private var gradientEnd = UnitPoint(x: 1, y: 1)
     @State private var isAnimating = true
     @State private var animationTask: Task<Void, Never>?
+    @State private var selectedColors: [Color] = [.blue, .purple, .red, .orange]
+    @State private var showingColorPicker = false
     
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [.blue, .purple, .red, .orange],
+                colors: selectedColors,
                 startPoint: gradientStart,
                 endPoint: gradientEnd
             )
             .ignoresSafeArea()
-            .onChange(of: isAnimating) { oldValue, newValue in
+            .onChange(of: isAnimating) { newValue in
                 if newValue {
                     animate()
                 } else {
@@ -293,15 +295,38 @@ struct MaterialsView: View {
             }
             
             VStack {
-                Button(action: { isAnimating.toggle() }) {
-                    Image(systemName: isAnimating ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(.white)
-                        .padding()
-                        .background(.ultraThinMaterial)
-                        .clipShape(Circle())
+                HStack {
+                    Button(action: { isAnimating.toggle() }) {
+                        Image(systemName: isAnimating ? "pause.circle.fill" : "play.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                    }
+                    
+                    Button(action: { showingColorPicker.toggle() }) {
+                        Image(systemName: "eyedropper")
+                            .font(.system(size: 24))
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                    }
                 }
                 .padding()
+                
+                if showingColorPicker {
+                    VStack {
+                        ForEach(0..<4) { index in
+                            ColorPicker("Color \(index + 1)", selection: $selectedColors[index])
+                                .padding(.horizontal)
+                        }
+                    }
+                    .padding()
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(12)
+                }
                 
                 Spacer()
             }
