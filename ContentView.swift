@@ -277,6 +277,41 @@ struct MaterialsView: View {
     @State private var animationTask: Task<Void, Never>?
     @State private var selectedColors: [Color] = [.blue, .purple, .red, .orange]
     @State private var showingColorPicker = false
+    @State private var selectedOrientation = GradientOrientation.diagonal
+    
+    enum GradientOrientation: String, CaseIterable {
+        case diagonal = "Diagonal"
+        case horizontal = "Horizontal"
+        case vertical = "Vertical"
+        case diagonalReverse = "Diagonal Reverse"
+        
+        var startPoint: UnitPoint {
+            switch self {
+            case .diagonal: return .topLeading
+            case .horizontal: return .leading
+            case .vertical: return .top
+            case .diagonalReverse: return .topTrailing
+            }
+        }
+        
+        var endPoint: UnitPoint {
+            switch self {
+            case .diagonal: return .bottomTrailing
+            case .horizontal: return .trailing
+            case .vertical: return .bottom
+            case .diagonalReverse: return .bottomLeading
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .diagonal: return "arrow.down.right"
+            case .horizontal: return "arrow.right"
+            case .vertical: return "arrow.down"
+            case .diagonalReverse: return "arrow.down.left"
+            }
+        }
+    }
     
     var body: some View {
         ZStack {
@@ -286,7 +321,7 @@ struct MaterialsView: View {
                 endPoint: gradientEnd
             )
             .ignoresSafeArea()
-            .onChange(of: isAnimating) { newValue in
+            .onChange(of: isAnimating) { oldValue, newValue in
                 if newValue {
                     animate()
                 } else {
@@ -295,7 +330,7 @@ struct MaterialsView: View {
             }
             
             VStack {
-                HStack {
+                HStack(spacing: 12) {
                     Button(action: { isAnimating.toggle() }) {
                         Image(systemName: isAnimating ? "pause.circle.fill" : "play.circle.fill")
                             .font(.system(size: 24))
@@ -307,6 +342,26 @@ struct MaterialsView: View {
                     
                     Button(action: { showingColorPicker.toggle() }) {
                         Image(systemName: "eyedropper")
+                            .font(.system(size: 24))
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                    }
+                    
+                    Menu {
+                        ForEach(GradientOrientation.allCases, id: \.self) { orientation in
+                            Button(action: {
+                                selectedOrientation = orientation
+                                if isAnimating {
+                                    animate()
+                                }
+                            }) {
+                                Label(orientation.rawValue, systemImage: orientation.icon)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: selectedOrientation.icon)
                             .font(.system(size: 24))
                             .foregroundColor(.white)
                             .padding()
@@ -353,25 +408,27 @@ struct MaterialsView: View {
     }
     
     private func animate() {
+        animationTask?.cancel()
         animationTask = Task {
             while !Task.isCancelled {
                 withAnimation(.linear(duration: 5.0)) {
-                    gradientStart = UnitPoint(x: 1, y: 1)
-                    gradientEnd = UnitPoint(x: 0, y: 0)
+                    gradientStart = selectedOrientation.endPoint
+                    gradientEnd = selectedOrientation.startPoint
                 }
                 try? await Task.sleep(nanoseconds: 5_000_000_000)
                 
                 if Task.isCancelled { break }
                 
                 withAnimation(.linear(duration: 5.0)) {
-                    gradientStart = UnitPoint(x: 0, y: 0)
-                    gradientEnd = UnitPoint(x: 1, y: 1)
+                    gradientStart = selectedOrientation.startPoint
+                    gradientEnd = selectedOrientation.endPoint
                 }
                 try? await Task.sleep(nanoseconds: 5_000_000_000)
             }
         }
     }
 }
+
 
 // Material Item View
 struct MaterialItemView: View {
